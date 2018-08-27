@@ -251,6 +251,7 @@ function getShape(verts, colors ,primtype, translation, rotationAxis ,gl){
           currentTime : Date.now()
     };
 
+
     mat4.translate(shape.modelViewMatrix, shape.modelViewMatrix, translation);
 
     shape.update = function()
@@ -275,8 +276,8 @@ function genericShape(start_point,start_angle, finish_angle, nTrian, colors ,rad
 
   for (var i = start_angle; i < finish_angle; i+= step) {
     verts.push(0.0,start_point,0.0);
-    verts.push(cos(i)*radius,0.0 ,sin(i)*radius);
-    verts.push(cos(i+step)*radius,0.0 ,sin(i+step)*radius);
+    verts.push(cos(i)*radius, 0.0 ,sin(i)*radius);
+    verts.push(cos(i+step)*radius, 0.0 ,sin(i+step)*radius);
 
   }
 
@@ -299,3 +300,88 @@ function getOchtahedron(r ,gl, translation, rotationAxis) {
   var side_1 = genericShape(-r, 0, 360, 4, 4 ,r, translation, rotationAxis, gl);
   return [side_0,side_1];
 }
+
+function getScutoid(r, gl, translation, rotationAxis) {
+  topT = translation.slice(0);
+  bottomT = translation.slice(0);
+  topT[1] = r*1.5;
+  bottomT[1] = -r*1.5;
+
+  var hexa = genericShape(0, 0, 360, 6, 6 ,r, topT, rotationAxis, gl);
+  var penta = genericShape(0, 0, 360, 5, 5 ,r, bottomT, rotationAxis, gl);
+  // mat4.rotate(penta.modelViewMatrix, penta.modelViewMatrix, -sin(17.5), [0,0,1]);
+
+
+  return [hexa, penta]
+}
+
+
+function genericShapeScutoid(start_point,start_angle, finish_angle, nTrian, colors ,radius,translation, rotationAxis ,gl){
+  var verts = [];
+
+  if(nTrian == 1) verts[1] = radius/2;
+
+  step = (finish_angle - start_angle)/nTrian
+
+  for (var i = start_angle; i < finish_angle; i+= step) {
+    verts.push(0.0,start_point,0.0);
+    verts.push(cos(i)*radius, 0.0 ,sin(i)*radius);
+    verts.push(cos(i+step)*radius, 0.0 ,sin(i+step)*radius);
+
+  }
+
+  return getShape(verts, colors ,gl.TRIANGLES, translation, rotationAxis ,gl);
+
+}
+
+
+// TESTING
+
+hexa = [
+  0, 0, 0,
+  0.5, 0, 0,
+  0.25, 0, 0.43,
+
+  0, 0, 0,
+  0.25, 0, 0.43,
+  -0.25, 0, 0.43,
+
+  0, 0, 0,
+  -0.25, 0, 0.43,
+  -0.5, 0, 0,
+
+  0, 0, 0,
+  -0.5, 0, 0,
+  -0.25, 0, -0.43,
+
+  0, 0, 0,
+  -0.25, 0, -0.43,
+  0.25, 0, -0.43,
+
+  0, 0, 0,
+  0.25, 0, -0.43,
+  0.5, 0, -0
+]
+
+
+penta = [
+  0, 0, 0,
+  0.5, 0, 0,
+  0.15, 0, 0.48,
+
+  0, 0, 0,
+  0.15, 0, 0.48,
+  -0.4, 0, 0.29,
+
+  0, 0, 0,
+  -0.4, 0, 0.29,
+  -0.4, 0, -0.29,
+
+  0, 0, 0,
+  -0.4, 0, -0.29,
+  0.15, 0, -0.48,
+
+  0, 0, 0,
+  0.15, 0, -0.48,
+  0.5, 0, -0
+]
