@@ -1,6 +1,6 @@
 var projectionMatrix;
 
-var shaderProgram, shaderVertexPositionAttribute, shaderVertexColorAttribute, 
+var shaderProgram, shaderVertexPositionAttribute, shaderVertexColorAttribute,
     shaderProjectionMatrixUniform, shaderModelViewMatrixUniform;
 
 var duration = 5000; // ms
@@ -8,7 +8,8 @@ var duration = 5000; // ms
 // Attributes: Input variables used in the vertex shader. Since the vertex shader is called on each vertex, these will be different every time the vertex shader is invoked.
 // Uniforms: Input variables for both the vertex and fragment shaders. These do not change values from vertex to vertex.
 // Varyings: Used for passing data from the vertex shader to the fragment shader. Represent information for which the shader can output different value for each vertex.
-var vertexShaderSource =    
+
+var vertexShaderSource =
     "    attribute vec3 vertexPos;\n" +
     "    attribute vec4 vertexColor;\n" +
     "    uniform mat4 modelViewMatrix;\n" +
@@ -27,22 +28,24 @@ var vertexShaderSource =
 // - highp for vertex positions,
 // - mediump for texture coordinates,
 // - lowp for colors.
-var fragmentShaderSource = 
+var fragmentShaderSource =
     "    precision lowp float;\n" +
     "    varying vec4 vColor;\n" +
     "    void main(void) {\n" +
     "    gl_FragColor = vColor;\n" +
     "}\n";
 
+
+
 function initWebGL(canvas)
 {
     var gl = null;
     var msg = "Your browser does not support WebGL, " +
         "or it is not enabled by default.";
-    try 
+    try
     {
         gl = canvas.getContext("experimental-webgl");
-    } 
+    }
     catch (e)
     {
         msg = "Error creating WebGL Context!: " + e.toString();
@@ -54,7 +57,7 @@ function initWebGL(canvas)
         throw new Error(msg);
     }
 
-    return gl;        
+    return gl;
  }
 
 function initViewport(gl, canvas)
@@ -67,6 +70,7 @@ function initGL(canvas)
     // Create a project matrix with 45 degree field of view
     projectionMatrix = mat4.create();
     mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 1, 10000);
+    mat4.translate(projectionMatrix, projectionMatrix, [0, 0, -5]);
 }
 
 // TO DO: Create the functions for each of the figures.
@@ -111,7 +115,7 @@ function initShader(gl)
 
     shaderVertexColorAttribute = gl.getAttribLocation(shaderProgram, "vertexColor");
     gl.enableVertexAttribArray(shaderVertexColorAttribute);
-    
+
     shaderProjectionMatrixUniform = gl.getUniformLocation(shaderProgram, "projectionMatrix");
     shaderModelViewMatrixUniform = gl.getUniformLocation(shaderProgram, "modelViewMatrix");
 
@@ -120,7 +124,7 @@ function initShader(gl)
     }
 }
 
-function draw(gl, objs) 
+function draw(gl, objs)
 {
     // clear the background (with black)
     gl.clearColor(0.1, 0.1, 0.1, 1.0);
@@ -140,7 +144,8 @@ function draw(gl, objs)
 
         gl.bindBuffer(gl.ARRAY_BUFFER, obj.colorBuffer);
         gl.vertexAttribPointer(shaderVertexColorAttribute, obj.colorSize, gl.FLOAT, false, 0, 0);
-        
+
+        // INDICES
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.indices);
 
         gl.uniformMatrix4fv(shaderProjectionMatrixUniform, false, projectionMatrix);
@@ -152,11 +157,17 @@ function draw(gl, objs)
         // count: A GLsizei specifying the number of elements to be rendered.
         // type: A GLenum specifying the type of the values in the element array buffer.
         // offset: A GLintptr specifying an offset in the element array buffer.
+
+        // INDICES
         gl.drawElements(obj.primtype, obj.nIndices, gl.UNSIGNED_SHORT, 0);
+
+
+        // gl.drawArrays(obj.primtype, 0, obj.nVerts);
     }
 }
 
-function run(gl, objs) 
+
+function run(gl, objs)
 {
     // The window.requestAnimationFrame() method tells the browser that you wish to perform an animation and requests that the browser call a specified function to update an animation before the next repaint. The method takes a callback as an argument to be invoked before the repaint.
     requestAnimationFrame(function() { run(gl, objs); });
@@ -164,4 +175,159 @@ function run(gl, objs)
 
     for(i = 0; i<objs.length; i++)
         objs[i].update();
+}
+
+function toRadians(angle) {
+  return angle * (Math.PI / 180);
+}
+
+function cos(angle){
+  return Math.cos(toRadians(angle));
+}
+
+function sin(angle){
+  return Math.sin(toRadians(angle));
+}
+
+function getShape(verts, primtype, translation, rotationAxis ,gl){
+  var vertexBuffer;
+  vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+
+  // Color data
+  var colorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  var faceColors = [
+      [1.0, 0.0, 0.0, 1.0],
+      [0.0, 1.0, 0.0, 1.0],
+      [0.0, 0.0, 1.0, 1.0],
+      [1.0, 1.0, 0.0, 1.0],
+      [1.0, 0.0, 1.0, 1.0],
+  ];
+
+  // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the cube's face.
+  var vertexColors = [];
+  for (const color of faceColors)
+  {
+      for (var j=0; j < 3; j++)
+          vertexColors = vertexColors.concat(color);
+  }
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
+
+
+
+  var shape = {
+    buffer:vertexBuffer, vertSize:3, nVerts:verts.length/3, primtype,
+    modelViewMatrix: mat4.create(), currentTime : Date.now(),
+    colorBuffer:colorBuffer,
+    colorSize:3,
+    nColors:vertexColors.length/3
+
+  };
+
+  mat4.translate(shape.modelViewMatrix, shape.modelViewMatrix, translation);
+
+  shape.update = function()
+  {
+      var now = Date.now();
+      var deltat = now - this.currentTime;
+      this.currentTime = now;
+      var fract = deltat / duration;
+      var angle = Math.PI * 2 * fract;
+
+      // Rotates a mat4 by the given angle
+      // mat4 out the receiving matrix
+      // mat4 a the matrix to rotate
+      // Number rad the angle to rotate the matrix by
+      // vec3 axis the axis to rotate around
+      mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+  };
+
+  // colorBuffer:colorBuffer
+  // colorSize:4, nColors: 24
+
+  return shape;
+}
+
+function genericShape(start_point,start_angle, finish_angle, nTrian, radius,translation, rotationAxis ,gl){
+  var verts = [0.0,start_point,0.0];
+
+  if(nTrian == 1) verts[1] = radius/2;
+
+  step = (finish_angle - start_angle)/nTrian
+
+
+  for (var i = start_angle; i <= finish_angle; i+= step) {
+    verts.push(cos(i)*radius,0.0 ,sin(i)*radius);
+
+  }
+
+  return getShape(verts, gl.TRIANGLE_FAN,translation, rotationAxis ,gl);
+
+}
+
+function getPyramid(r ,gl, translation, rotationAxis) {
+  var side_0 = genericShape(r*3, 0, 360, 5, r, translation, rotationAxis, gl);
+
+  var side_1 = genericShape(0, 0, 360, 5, r, translation, rotationAxis, gl);
+
+
+  // Index data (defines the triangles to be drawn).
+  var indexBufer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
+  var indices = [
+      0, 1, 2,
+      0, 2, 3,    // Front face
+      0, 3, 4,
+      0, 4, 5,    // Back face
+      0, 5, 1
+  ];
+
+  // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
+  // Uint16Array: Array of 16-bit unsigned integers.
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+  side_0.nIndices = indices.length;
+  side_0.indices = indexBufer;
+
+  side_1.nIndices = indices.length;
+  side_1.indices = indexBufer;
+
+
+
+  return [side_0,side_1];
+}
+
+
+function getOchtahedron(r ,gl, translation, rotationAxis) {
+  var side_0 = genericShape(r, 0, 360, 4, r, translation, rotationAxis, gl);
+  var side_1 = genericShape(-r, 0, 360, 4, r, translation, rotationAxis, gl);
+
+  // Index data (defines the triangles to be drawn).
+  var indexBufer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
+  var indices = [
+      0, 1, 2,
+      0, 2, 3,
+      0, 3, 4,
+      0, 4, 5,
+  ];
+
+  // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
+  // Uint16Array: Array of 16-bit unsigned integers.
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+  side_0.nIndices = indices.length;
+  side_0.indices = indexBufer;
+
+  side_1.nIndices = indices.length;
+  side_1.indices = indexBufer;
+
+
+
+
+  return [side_0,side_1];
 }
