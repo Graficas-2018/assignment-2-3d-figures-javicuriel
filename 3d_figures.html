@@ -19,12 +19,14 @@
 						initShader(gl);
 
 				// TO DO: create and draw the figures
-
 				r = 0.5;
-        var pyramid = getPyramid(r, gl, [-2, 0, 0], [0.1, 1.0, 0.2]);
-				var ochtahedron = getOchtahedron(r, gl, [0, 0, 0], [0, 1, 0]);
+				shapes = []
 
-				run(gl, [pyramid[0],pyramid[1],ochtahedron[0],ochtahedron[1]]);
+        var pyramid = getPyramid(r, gl, [-2, 0, 0], [1.1, 1.0, 0.2]);
+				var ochtahedron = getOchtahedron(r, gl, [0, 0, 0], [0, 1, 0]);
+				shapes = shapes.concat(pyramid)
+				shapes = shapes.concat(ochtahedron)
+				run(gl, shapes);
 			}
 	);
 

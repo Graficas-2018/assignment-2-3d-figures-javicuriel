@@ -189,145 +189,113 @@ function sin(angle){
   return Math.sin(toRadians(angle));
 }
 
-function getShape(verts, primtype, translation, rotationAxis ,gl){
+allColors = [
+  [1.0, 0.0, 0.0],
+  [0.0, 1.0, 0.0],
+  [0.0, 0.0, 1.0],
+  [1.0, 1.0, 0.0],
+  [1.0, 0.0, 1.0],
+  [0.0, 1.0, 1.0]
+]
+
+
+function getShape(verts, colors ,primtype, translation, rotationAxis ,gl){
+
   var vertexBuffer;
   vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
 
-
-  // Color data
   var colorBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  var faceColors = [
-      [1.0, 0.0, 0.0, 1.0],
-      [0.0, 1.0, 0.0, 1.0],
-      [0.0, 0.0, 1.0, 1.0],
-      [1.0, 1.0, 0.0, 1.0],
-      [1.0, 0.0, 1.0, 1.0],
-  ];
 
-  // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the cube's face.
+
+  // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the pyramid's face.
   var vertexColors = [];
-  for (const color of faceColors)
-  {
-      for (var j=0; j < 3; j++)
-          vertexColors = vertexColors.concat(color);
+
+  // Triangle has 3 points in space which have 3 points in plane x,y,z
+  sides = verts.length/3/3;
+
+  for (var i = 0; i < sides; i++) {
+    colorIndex = i%colors;
+    vertexColors = vertexColors.concat(
+      allColors[colorIndex],
+      allColors[colorIndex],
+      allColors[colorIndex])
   }
+
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
 
+  var indexBufer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
+  var indices = [];
+  for (var i = 0; i < verts.length/3; i++) {
+    indices.push(i)
+  }
 
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
   var shape = {
-    buffer:vertexBuffer, vertSize:3, nVerts:verts.length/3, primtype,
-    modelViewMatrix: mat4.create(), currentTime : Date.now(),
-    colorBuffer:colorBuffer,
-    colorSize:3,
-    nColors:vertexColors.length/3
+          buffer:vertexBuffer,
+          colorBuffer:colorBuffer,
+          indices:indexBufer,
+          vertSize:3,
+          nVerts:verts.length,
+          colorSize:3,
+          nColors: colors,
+          nIndices:indices.length,
+          primtype:gl.TRIANGLES,
+          modelViewMatrix: mat4.create(),
+          currentTime : Date.now()
+    };
 
-  };
+    mat4.translate(shape.modelViewMatrix, shape.modelViewMatrix, translation);
 
-  mat4.translate(shape.modelViewMatrix, shape.modelViewMatrix, translation);
-
-  shape.update = function()
-  {
+    shape.update = function()
+    {
       var now = Date.now();
       var deltat = now - this.currentTime;
       this.currentTime = now;
       var fract = deltat / duration;
       var angle = Math.PI * 2 * fract;
-
-      // Rotates a mat4 by the given angle
-      // mat4 out the receiving matrix
-      // mat4 a the matrix to rotate
-      // Number rad the angle to rotate the matrix by
-      // vec3 axis the axis to rotate around
       mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
-  };
-
-  // colorBuffer:colorBuffer
-  // colorSize:4, nColors: 24
+    };
 
   return shape;
 }
 
-function genericShape(start_point,start_angle, finish_angle, nTrian, radius,translation, rotationAxis ,gl){
-  var verts = [0.0,start_point,0.0];
+function genericShape(start_point,start_angle, finish_angle, nTrian, colors ,radius,translation, rotationAxis ,gl){
+  var verts = [];
 
   if(nTrian == 1) verts[1] = radius/2;
 
   step = (finish_angle - start_angle)/nTrian
 
-
-  for (var i = start_angle; i <= finish_angle; i+= step) {
+  for (var i = start_angle; i < finish_angle; i+= step) {
+    verts.push(0.0,start_point,0.0);
     verts.push(cos(i)*radius,0.0 ,sin(i)*radius);
+    verts.push(cos(i+step)*radius,0.0 ,sin(i+step)*radius);
 
   }
 
-  return getShape(verts, gl.TRIANGLE_FAN,translation, rotationAxis ,gl);
+  return getShape(verts, colors ,gl.TRIANGLES, translation, rotationAxis ,gl);
 
 }
 
 function getPyramid(r ,gl, translation, rotationAxis) {
-  var side_0 = genericShape(r*3, 0, 360, 5, r, translation, rotationAxis, gl);
-
-  var side_1 = genericShape(0, 0, 360, 5, r, translation, rotationAxis, gl);
-
-
-  // Index data (defines the triangles to be drawn).
-  var indexBufer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
-  var indices = [
-      0, 1, 2,
-      0, 2, 3,    // Front face
-      0, 3, 4,
-      0, 4, 5,    // Back face
-      0, 5, 1
-  ];
-
-  // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
-  // Uint16Array: Array of 16-bit unsigned integers.
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-  side_0.nIndices = indices.length;
-  side_0.indices = indexBufer;
-
-  side_1.nIndices = indices.length;
-  side_1.indices = indexBufer;
-
-
+  var side_0 = genericShape(r*3, 0, 360, 5, 5 ,r, translation, rotationAxis, gl);
+  allColors.unshift(allColors.pop())
+  var side_1 = genericShape(0, 0, 360, 5, 1, r, translation, rotationAxis, gl);
 
   return [side_0,side_1];
 }
 
 
 function getOchtahedron(r ,gl, translation, rotationAxis) {
-  var side_0 = genericShape(r, 0, 360, 4, r, translation, rotationAxis, gl);
-  var side_1 = genericShape(-r, 0, 360, 4, r, translation, rotationAxis, gl);
-
-  // Index data (defines the triangles to be drawn).
-  var indexBufer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
-  var indices = [
-      0, 1, 2,
-      0, 2, 3,
-      0, 3, 4,
-      0, 4, 5,
-  ];
-
-  // gl.ELEMENT_ARRAY_BUFFER: Buffer used for element indices.
-  // Uint16Array: Array of 16-bit unsigned integers.
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-  side_0.nIndices = indices.length;
-  side_0.indices = indexBufer;
-
-  side_1.nIndices = indices.length;
-  side_1.indices = indexBufer;
-
-
-
-
+  var side_0 = genericShape(r, 0, 360, 4, 4 ,r, translation, rotationAxis, gl);
+  allColors.unshift(allColors.pop(), allColors.pop())
+  var side_1 = genericShape(-r, 0, 360, 4, 4 ,r, translation, rotationAxis, gl);
   return [side_0,side_1];
 }
