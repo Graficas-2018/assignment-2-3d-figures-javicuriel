@@ -298,90 +298,214 @@ function getOchtahedron(r ,gl, translation, rotationAxis) {
   var side_0 = genericShape(r, 0, 360, 4, 4 ,r, translation, rotationAxis, gl);
   allColors.unshift(allColors.pop(), allColors.pop())
   var side_1 = genericShape(-r, 0, 360, 4, 4 ,r, translation, rotationAxis, gl);
+  side_0.dir = side_1.dir = 1;
+  
+  update = function()
+  {
+    var now = Date.now();
+    var deltat = now - this.currentTime;
+    this.currentTime = now;
+    var fract = deltat / duration;
+    var angle = Math.PI * 2 * fract;
+    var speed = .01
+    if(this.modelViewMatrix[13] > 1.5 || this.modelViewMatrix[13] < -1.5){
+      this.dir = this.dir*-1;
+    }
+    mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+    mat4.translate(this.modelViewMatrix, this.modelViewMatrix, [0,speed*this.dir,0]);
+  };
+  side_0.update = update;
+  side_1.update = update;
+
   return [side_0,side_1];
 }
 
+[
+  1, 0, 0,
+  0, 0, 1,
+  0, 0, 0,
+  0, 1, 0,
+  2, 0, 0,
+  1]
+
 function getScutoid(r, gl, translation, rotationAxis) {
-  topT = translation.slice(0);
-  bottomT = translation.slice(0);
-  topT[1] = r*1.5;
-  bottomT[1] = -r*1.5;
+  var hexa_verts = getScutoidVerts(r*1.5, 0, 360, 6, r);
+  var penta_verts = getScutoidVerts(-r*1.5, 90, 450, 5, r);
 
-  var hexa = genericShape(0, 0, 360, 6, 6 ,r, topT, rotationAxis, gl);
-  var penta = genericShape(0, 0, 360, 5, 5 ,r, bottomT, rotationAxis, gl);
-  // mat4.rotate(penta.modelViewMatrix, penta.modelViewMatrix, -sin(17.5), [0,0,1]);
+  all_verts = hexa_verts.concat(penta_verts)
 
+  middle = [0, 0.75/2, 0.5]
+  all_verts.push(middle);
 
-  return [hexa, penta]
+  scutoidIndices = [
+    // HEXA
+    0,1,2,
+    0,2,3,
+    0,3,4,
+    0,4,5,
+    0,5,6,
+    0,6,1,
+    // PENTA
+    7,8,9,
+    7,9,10,
+    7,10,11,
+    7,11,12,
+    7,12,8,
+
+    // Back Side
+    5,6,11,
+    10,11,5,
+    // Left Side
+    4,5,10,
+    9,10,4,
+    // Right Side
+    1,6,12,
+    11,12,6,
+    // Right Front
+    3,4,9,
+    3,13,9,
+    13,8,9,
+    // Left Front
+    1,2,12,
+    2,13,12,
+    13,8,12,
+    // Main Triangle
+    2,3,13
+  ];
+
+  var triangles = getScutoidTriangles(all_verts, scutoidIndices, translation, rotationAxis ,gl);
+
+  // var scutoid = getShape(triangles, 6 ,gl.TRIANGLES, translation, rotationAxis ,gl);
+  var scutoid = getShapeScutoid(triangles, 6 ,gl.TRIANGLES, translation, rotationAxis ,gl);
+
+  return [scutoid]
 }
 
 
-function genericShapeScutoid(start_point,start_angle, finish_angle, nTrian, colors ,radius,translation, rotationAxis ,gl){
-  var verts = [];
+
+function getScutoidTriangles(verts, indices, translation, rotationAxis ,gl){
+  totalVerts = [];
+  for (index of indices) {
+    totalVerts = totalVerts.concat(verts[index])
+  }
+  return totalVerts;
+
+}
+
+
+function getScutoidVerts(start_point,start_angle, finish_angle, nTrian ,radius){
+
+  var verts = [[0.0,start_point,0.0]];
 
   if(nTrian == 1) verts[1] = radius/2;
 
   step = (finish_angle - start_angle)/nTrian
 
   for (var i = start_angle; i < finish_angle; i+= step) {
-    verts.push(0.0,start_point,0.0);
-    verts.push(cos(i)*radius, 0.0 ,sin(i)*radius);
-    verts.push(cos(i+step)*radius, 0.0 ,sin(i+step)*radius);
-
+    if(i > 360){
+      verts.push([cos(i-360)*radius, start_point, sin(i-360)*radius]);
+    }
+    else{
+      verts.push([cos(i)*radius, start_point, sin(i)*radius]);
+    }
   }
-
-  return getShape(verts, colors ,gl.TRIANGLES, translation, rotationAxis ,gl);
+  return verts
 
 }
 
 
-// TESTING
+function getShapeScutoid(verts, colors ,primtype, translation, rotationAxis ,gl){
 
-hexa = [
-  0, 0, 0,
-  0.5, 0, 0,
-  0.25, 0, 0.43,
+  var vertexBuffer;
+  vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 
-  0, 0, 0,
-  0.25, 0, 0.43,
-  -0.25, 0, 0.43,
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
 
-  0, 0, 0,
-  -0.25, 0, 0.43,
-  -0.5, 0, 0,
-
-  0, 0, 0,
-  -0.5, 0, 0,
-  -0.25, 0, -0.43,
-
-  0, 0, 0,
-  -0.25, 0, -0.43,
-  0.25, 0, -0.43,
-
-  0, 0, 0,
-  0.25, 0, -0.43,
-  0.5, 0, -0
-]
+  var colorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
 
 
-penta = [
-  0, 0, 0,
-  0.5, 0, 0,
-  0.15, 0, 0.48,
+  // Each vertex must have the color information, that is why the same color is concatenated 4 times, one for each vertex of the pyramid's face.
+  var vertexColors = [];
 
-  0, 0, 0,
-  0.15, 0, 0.48,
-  -0.4, 0, 0.29,
+  // HEXA
+  for (var i = 0; i < 6; i++) {
+    vertexColors = concatColor(vertexColors,0);
+  }
+  // PENTA
+  for (var i = 0; i < 5; i++) {
+    vertexColors = concatColor(vertexColors,1);
+  }
+  // Back Side
+  for (var i = 0; i < 2; i++) {
+    vertexColors = concatColor(vertexColors,2);
+  }
+  // Left Side
+  for (var i = 0; i < 2; i++) {
+    vertexColors = concatColor(vertexColors,3);
+  }
+  // Right Side
+  for (var i = 0; i < 2; i++) {
+    vertexColors = concatColor(vertexColors,4);
+  }
+  // Right Front
+  for (var i = 0; i < 3; i++) {
+    vertexColors = concatColor(vertexColors,5);
+  }
+  // Left Front
+  for (var i = 0; i < 3; i++) {
+    vertexColors = concatColor(vertexColors,2);
+  }
+  // Main Triangle
+  vertexColors = concatColor(vertexColors,1);
 
-  0, 0, 0,
-  -0.4, 0, 0.29,
-  -0.4, 0, -0.29,
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColors), gl.STATIC_DRAW);
 
-  0, 0, 0,
-  -0.4, 0, -0.29,
-  0.15, 0, -0.48,
+  var indexBufer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufer);
+  var indices = [];
+  for (var i = 0; i < verts.length/3; i++) {
+    indices.push(i)
+  }
 
-  0, 0, 0,
-  0.15, 0, -0.48,
-  0.5, 0, -0
-]
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+  var shape = {
+          buffer:vertexBuffer,
+          colorBuffer:colorBuffer,
+          indices:indexBufer,
+          vertSize:3,
+          nVerts:verts.length,
+          colorSize:3,
+          nColors: 6,
+          nIndices:indices.length,
+          primtype:gl.TRIANGLES,
+          modelViewMatrix: mat4.create(),
+          currentTime : Date.now()
+    };
+
+
+    mat4.translate(shape.modelViewMatrix, shape.modelViewMatrix, translation);
+
+    shape.update = function()
+    {
+      var now = Date.now();
+      var deltat = now - this.currentTime;
+      this.currentTime = now;
+      var fract = deltat / duration;
+      var angle = Math.PI * 2 * fract;
+      mat4.rotate(this.modelViewMatrix, this.modelViewMatrix, angle, rotationAxis);
+    };
+
+  return shape;
+}
+
+function concatColor(vertexColors, index) {
+  vertexColors = vertexColors.concat(
+    allColors[index],
+    allColors[index],
+    allColors[index]
+  )
+  return vertexColors
+}

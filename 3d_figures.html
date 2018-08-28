@@ -23,8 +23,9 @@
 				shapes = []
 
         var pyramid = getPyramid(r, gl, [-2, 0, 0], [0.1, 1.0, 0.2]);
-				var ochtahedron = getOchtahedron(r, gl, [0, 0, 0], [0, 1, 0]);
-				var scutoid = getScutoid(r, gl, [2, 0, 0], [-0.4, 1.0, 0.1]);
+				var scutoid = getScutoid(r, gl, [0, 0, 0], [-0.4, 1.0, 0.1]);
+				var ochtahedron = getOchtahedron(r, gl, [2, 0, 0], [0, 1, 0]);
+
 				shapes = shapes.concat(pyramid)
 				shapes = shapes.concat(ochtahedron)
 				shapes = shapes.concat(scutoid)
